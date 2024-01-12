@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-from dataset.reviewdata import ReviewData
+from reviewdata import ReviewData
 from frameworks import Model
 import models
 from config import config

@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from config import config
-from dataset.reviewdata import ReviewData
+from reviewdata import ReviewData
 from frameworks import Model
 import models
 from predict import unpack_input, predict
@@ -55,8 +55,10 @@ def train(kwargs):
     val_data = ReviewData(opt.data_root, mode="Val")
     val_data_loader = DataLoader(val_data, batch_size=opt.batch_size, shuffle=False, collate_fn=collate_fn)
     print(f'train data: {len(train_data)}; test data: {len(val_data)}')
-
-    optimizer = optim.Adam(model.parameters(), lr=opt.lr, weight_decay=opt.weight_decay)
+    if 'optimizer' not in opt.optimizer:
+        optimizer = optim.Adam(model.parameters(), lr=opt.lr, weight_decay=opt.weight_decay)
+    elif opt.optimizer=='SGD':
+        optimizer = optim.SGD(model.parameters(), lr=opt.lr, weight_decay=opt.weight_decay)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.8)
 
     # training

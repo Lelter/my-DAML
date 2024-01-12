@@ -6,13 +6,6 @@ import torch.nn.functional as F
 
 
 class PredictionLayer(nn.Module):
-    '''
-        Rating Prediciton Methods
-        - LFM: Latent Factor Model
-        - (N)FM: (Neural) Factorization Machine
-        - MLP
-        - SUM
-    '''
     def __init__(self, opt):
         super(PredictionLayer, self).__init__()
         self.output = opt.output
@@ -20,8 +13,6 @@ class PredictionLayer(nn.Module):
             self.model = FM(opt.feature_dim, opt.user_num, opt.item_num)
         elif opt.output == "lfm":
             self.model = LFM(opt.feature_dim, opt.user_num, opt.item_num)
-        elif opt.output == 'mlp':
-            self.model = MLP(opt.feature_dim)
         elif opt.output == 'nfm':
             self.model = NFM(opt.feature_dim)
         else:
@@ -30,9 +21,6 @@ class PredictionLayer(nn.Module):
     def forward(self, feature, uid, iid):
         if self.output == "lfm" or "fm" or "nfm":
             return self.model(feature, uid, iid)
-        else:
-            return self.model(feature, 1, keepdim=True)
-
 
 class LFM(nn.Module):
 
@@ -62,9 +50,6 @@ class LFM(nn.Module):
 
 
 class NFM(nn.Module):
-    '''
-    Neural FM
-    '''
     def __init__(self, dim):
         super(NFM, self).__init__()
         self.dim = dim
@@ -119,12 +104,6 @@ class FM(nn.Module):
         nn.init.uniform_(self.fm_V, -0.05, 0.05)
 
     def build_fm(self, input_vec):
-        '''
-        y = w_0 + \sum {w_ix_i} + \sum_{i=1}\sum_{j=i+1}<v_i, v_j>x_ix_j
-        factorization machine layer
-        refer: https://github.com/vanzytay/KDD2018_MPCN/blob/master/tylib/lib
-                      /compose_op.py#L13
-        '''
         # linear part: first two items
         fm_linear_part = self.fc(input_vec)
 
@@ -139,20 +118,3 @@ class FM(nn.Module):
     def forward(self, feature, uids, iids):
         fm_out = self.build_fm(feature)
         return fm_out + self.b_users[uids] + self.b_items[iids]
-
-
-class MLP(nn.Module):
-
-    def __init__(self, dim):
-        super(MLP, self).__init__()
-        self.dim = dim
-        # ---------------------------fc_linear------------------------------
-        self.fc = nn.Linear(dim, 1)
-        self.init_weight()
-
-    def init_weight(self):
-        nn.init.uniform_(self.fc.weight, 0.1, 0.1)
-        nn.init.uniform_(self.fc.bias, a=0, b=0.2)
-
-    def forward(self, feature, *args, **kwargs):
-        return F.relu(self.fc(feature))

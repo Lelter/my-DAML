@@ -40,39 +40,45 @@ class DAML(nn.Module):
         self.reset_para()
 
     def forward(self, datas):
-        '''
-        user_reviews, item_reviews, uids, iids, \
-        user_item2id, item_user2id, user_doc, item_doc = datas
-        '''
-        _, _, uids, iids, _, _, user_doc, item_doc = datas
+            '''
+            前向传播函数，用于计算模型的输出。
 
-        # ------------------ review encoder ---------------------------------
+            参数:
+                datas: 包含用户评论、物品评论、用户ID、物品ID等数据的元组
 
-        user_word_embs = self.user_word_embs(user_doc)
-        item_word_embs = self.item_word_embs(item_doc)
-        # (BS, filters_num, DOC_LEN, 1)
-        user_local_fea = self.local_attention_cnn(user_word_embs, self.user_doc_cnn)
-        item_local_fea = self.local_attention_cnn(item_word_embs, self.item_doc_cnn)
+            返回:
+                use_fea: 用户特征向量和物品ID嵌入的组合特征
+                item_fea: 物品特征向量和用户ID嵌入的组合特征
+            '''
+            _, _, uids, iids, _, _, user_doc, item_doc = datas
 
-        # DOC_LEN * DOC_LEN
-        euclidean = (user_local_fea - item_local_fea.permute(0, 1, 3, 2)).pow(2).sum(1).sqrt()
-        attention_matrix = 1.0 / (1 + euclidean)
-        # (?, DOC_LEN)
-        user_attention = attention_matrix.sum(2)
-        item_attention = attention_matrix.sum(1)
+            # ------------------ review encoder ---------------------------------
 
-        # (?, 32)
-        user_doc_fea = self.local_pooling_cnn(user_local_fea, user_attention, self.user_abs_cnn, self.user_fc)
-        item_doc_fea = self.local_pooling_cnn(item_local_fea, item_attention, self.item_abs_cnn, self.item_fc)
+            user_word_embs = self.user_word_embs(user_doc)
+            item_word_embs = self.item_word_embs(item_doc)
+            # (BS, filters_num, DOC_LEN, 1)
+            user_local_fea = self.local_attention_cnn(user_word_embs, self.user_doc_cnn)
+            item_local_fea = self.local_attention_cnn(item_word_embs, self.item_doc_cnn)
 
-        # ------------------ id embedding ---------------------------------
-        uid_emb = self.uid_embedding(uids)
-        iid_emb = self.iid_embedding(iids)
+            # DOC_LEN * DOC_LEN
+            euclidean = (user_local_fea - item_local_fea.permute(0, 1, 3, 2)).pow(2).sum(1).sqrt()
+            attention_matrix = 1.0 / (1 + euclidean)
+            # (?, DOC_LEN)
+            user_attention = attention_matrix.sum(2)
+            item_attention = attention_matrix.sum(1)
 
-        use_fea = torch.stack([user_doc_fea, iid_emb], 1)
-        item_fea = torch.stack([item_doc_fea, uid_emb], 1)
+            # (?, 32)
+            user_doc_fea = self.local_pooling_cnn(user_local_fea, user_attention, self.user_abs_cnn, self.user_fc)
+            item_doc_fea = self.local_pooling_cnn(item_local_fea, item_attention, self.item_abs_cnn, self.item_fc)
 
-        return use_fea, item_fea
+            # ------------------ id embedding ---------------------------------
+            uid_emb = self.uid_embedding(uids)
+            iid_emb = self.iid_embedding(iids)
+
+            use_fea = torch.stack([user_doc_fea, iid_emb], 1)
+            item_fea = torch.stack([item_doc_fea, uid_emb], 1)
+
+            return use_fea, item_fea
 
     def local_attention_cnn(self, word_embs, doc_cnn):
         '''
